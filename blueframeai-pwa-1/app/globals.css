@@ -36,7 +36,11 @@
   a:focus-visible,
   button:focus-visible,
   label:focus-visible,
-  input:focus-visible {
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible,
+  [role="button"]:focus-visible {
     outline: 2px solid #3b82f6;
     outline-offset: 3px;
     border-radius: 2px;

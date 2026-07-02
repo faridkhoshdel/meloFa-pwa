@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   ArrowRight,
   Menu,
@@ -142,9 +145,9 @@ function CornerBrackets({ className = "" }: { className?: string }) {
 
 function Logo({ className = "" }: { className?: string }) {
   return (
-    <Link href="/" className={`group flex items-center gap-2 ${className}`}>
+    <Link href="/" aria-label="blueframeAI home" className={`group flex items-center gap-2 ${className}`}>
       <span className="grid h-8 w-8 place-items-center rounded-lg border border-primary/30 bg-primary/10 text-primary shadow-glow transition-colors group-hover:text-accent-cyan">
-        <Scan className="h-4 w-4" strokeWidth={2.25} />
+        <Scan className="h-4 w-4" strokeWidth={2.25} aria-hidden="true" />
       </span>
       <span className="font-display text-lg font-bold tracking-tight text-white">
         blueframe<span className="text-primary">AI</span>
@@ -154,13 +157,57 @@ function Logo({ className = "" }: { className?: string }) {
 }
 
 // ----------------------------------------------------------------------------
-// Navbar (mobile menu is pure CSS — no client JS needed)
+// Navbar
 // ----------------------------------------------------------------------------
 
 function Navbar() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const mobileMenuId = useId();
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsMenuOpen(false);
+        menuButtonRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const menuLinks = Array.from(
+        mobileMenuRef.current?.querySelectorAll<HTMLAnchorElement>("a") ?? [],
+      );
+      const focusableItems = [menuButtonRef.current, ...menuLinks].filter(
+        (item): item is HTMLElement => Boolean(item),
+      );
+      const firstItem = focusableItems[0];
+      const lastItem = focusableItems[focusableItems.length - 1];
+
+      if (!firstItem || !lastItem) return;
+
+      if (event.shiftKey && document.activeElement === firstItem) {
+        event.preventDefault();
+        lastItem.focus();
+      } else if (!event.shiftKey && document.activeElement === lastItem) {
+        event.preventDefault();
+        firstItem.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isMenuOpen]);
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-background/70 backdrop-blur-xl">
-      <nav className="relative mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
+      <nav
+        aria-label="Primary navigation"
+        className="relative mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8"
+      >
         <Logo />
 
         <div className="hidden items-center gap-8 lg:flex">
@@ -180,24 +227,35 @@ function Navbar() {
           className="hidden items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-glow transition-all hover:-translate-y-0.5 hover:bg-primary-light hover:shadow-glow-lg lg:inline-flex"
         >
           Get Started
-          <ArrowRight className="h-4 w-4" />
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </a>
 
-        {/* Mobile toggle (checkbox hack — zero JS) */}
-        <input type="checkbox" id="nav-toggle" className="peer hidden" />
-        <label
-          htmlFor="nav-toggle"
-          aria-label="Toggle menu"
-          className="grid h-10 w-10 cursor-pointer place-items-center rounded-lg border border-white/10 text-slate-200 transition-colors hover:bg-white/5 lg:hidden"
+        <button
+          ref={menuButtonRef}
+          type="button"
+          aria-label={isMenuOpen ? "Close main menu" : "Open main menu"}
+          aria-controls={mobileMenuId}
+          aria-expanded={isMenuOpen}
+          onClick={() => setIsMenuOpen((open) => !open)}
+          className="grid h-10 w-10 place-items-center rounded-lg border border-white/10 text-slate-200 transition-colors hover:bg-white/5 lg:hidden"
         >
-          <Menu className="h-5 w-5" />
-        </label>
+          <Menu className="h-5 w-5" aria-hidden="true" />
+        </button>
 
-        <div className="absolute inset-x-0 top-full flex max-h-0 flex-col gap-1 overflow-hidden border-b border-white/5 bg-background/95 px-6 py-0 backdrop-blur-xl transition-all duration-300 peer-checked:max-h-96 peer-checked:py-6 lg:hidden">
+        <div
+          ref={mobileMenuRef}
+          id={mobileMenuId}
+          aria-hidden={!isMenuOpen}
+          className={`absolute inset-x-0 top-full flex flex-col gap-1 overflow-hidden border-b border-white/5 bg-background/95 px-6 backdrop-blur-xl transition-all duration-300 lg:hidden ${
+            isMenuOpen ? "max-h-96 py-6" : "max-h-0 py-0"
+          }`}
+        >
           {NAV_LINKS.map((link) => (
             <a
               key={link.href}
               href={link.href}
+              onClick={() => setIsMenuOpen(false)}
+              tabIndex={isMenuOpen ? 0 : -1}
               className="rounded-lg px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
             >
               {link.label}
@@ -205,10 +263,12 @@ function Navbar() {
           ))}
           <a
             href="#get-started"
+            onClick={() => setIsMenuOpen(false)}
+            tabIndex={isMenuOpen ? 0 : -1}
             className="mt-2 inline-flex items-center justify-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-glow"
           >
             Get Started
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
       </nav>
@@ -238,7 +298,7 @@ function Hero() {
 
       <div className="relative z-10 mx-auto max-w-4xl text-center">
         <div className="group relative mb-8 inline-flex animate-fade-in-up items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-slate-300 backdrop-blur-md">
-          <Sparkles className="h-3.5 w-3.5 text-accent-cyan" />
+          <Sparkles className="h-3.5 w-3.5 text-accent-cyan" aria-hidden="true" />
           AI infrastructure, reimagined
           <CornerBrackets className="opacity-100" />
         </div>
@@ -261,7 +321,7 @@ function Hero() {
             className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-8 py-3.5 text-base font-semibold text-white shadow-glow transition-all hover:-translate-y-0.5 hover:shadow-glow-lg sm:w-auto"
           >
             Start Building
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
           </a>
           <a
             href="#docs"
@@ -289,7 +349,7 @@ function FeatureCard({ feature }: { feature: Feature }) {
         aria-hidden="true"
       />
       <div className="relative mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-gradient-to-br from-primary/20 to-accent-cyan/10 text-primary transition-colors group-hover:text-accent-cyan">
-        <Icon className="h-5 w-5" />
+        <Icon className="h-5 w-5" aria-hidden="true" />
       </div>
       <h3 className="relative mb-2 font-display text-lg font-semibold text-white">
         {feature.title}
@@ -347,28 +407,28 @@ function Footer() {
                 aria-label="GitHub"
                 className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-slate-400 transition-colors hover:border-primary/40 hover:text-white"
               >
-                <Github className="h-4 w-4" />
+                <Github className="h-4 w-4" aria-hidden="true" />
               </a>
               <a
                 href="#"
                 aria-label="LinkedIn"
                 className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-slate-400 transition-colors hover:border-primary/40 hover:text-white"
               >
-                <Linkedin className="h-4 w-4" />
+                <Linkedin className="h-4 w-4" aria-hidden="true" />
               </a>
               <a
                 href="mailto:hello@blueframeai.com"
                 aria-label="Email"
                 className="grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-slate-400 transition-colors hover:border-primary/40 hover:text-white"
               >
-                <Mail className="h-4 w-4" />
+                <Mail className="h-4 w-4" aria-hidden="true" />
               </a>
             </div>
           </div>
 
           {Object.entries(FOOTER_LINKS).map(([heading, links]) => (
             <div key={heading}>
-              <h4 className="mb-4 text-sm font-semibold text-white">{heading}</h4>
+              <h2 className="mb-4 text-sm font-semibold text-white">{heading}</h2>
               <ul className="space-y-3">
                 {links.map((link) => (
                   <li key={link.label}>
@@ -402,15 +462,17 @@ function Footer() {
 
 export default function Home() {
   return (
-    <main className="relative overflow-x-hidden bg-background">
+    <>
       <Navbar />
-      <Hero />
-      <FeaturesGrid />
+      <main className="relative overflow-x-hidden bg-background">
+        <Hero />
+        <FeaturesGrid />
+      </main>
       <Footer />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }}
       />
-    </main>
+    </>
   );
 }
